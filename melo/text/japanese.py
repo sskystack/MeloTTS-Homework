@@ -364,7 +364,7 @@ def hira2kata(text: str) -> str:
 
 _SYMBOL_TOKENS = set(list("・、。？！"))
 _NO_YOMI_TOKENS = set(list("「」『』―（）［］[]"))
-_TAGGER = MeCab.Tagger()
+_TAGGER = MeCab.Tagger(f'-r "dicdir/mecabrc" -d "dicdir"') # 修改路径为本地，避免网络原因导致的加载失败，请提前通过 modelscope 下载字典
 
 
 def text2kata(text: str) -> str:

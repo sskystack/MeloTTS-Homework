@@ -3,6 +3,7 @@ import os
 from . import utils
 from cached_path import cached_path
 from huggingface_hub import hf_hub_download
+from modelscope.hub.file_download import model_file_download
 
 DOWNLOAD_CKPT_URLS = {
     'EN': 'https://myshell-public-repo-host.s3.amazonaws.com/openvoice/basespeakers/EN/checkpoint.pth',
@@ -41,23 +42,31 @@ LANG_TO_HF_REPO_ID = {
     'KR': 'myshell-ai/MeloTTS-Korean',
 }
 
-def load_or_download_config(locale, use_hf=True, config_path=None):
+LANG_TO_MSP_REPO_ID = LANG_TO_HF_REPO_ID
+
+def load_or_download_config(locale, use_hf=False, use_ms=True, config_path=None):
     if config_path is None:
         language = locale.split('-')[0].upper()
         if use_hf:
             assert language in LANG_TO_HF_REPO_ID
-            config_path = hf_hub_download(repo_id=LANG_TO_HF_REPO_ID[language], filename="config.json")
+            config_path = hf_hub_download(repo_id=LANG_TO_HF_REPO_ID[language], filename="config.json", local_dir=f'./pretrained_models/{language}')
+        elif use_ms:
+            assert language in LANG_TO_MSP_REPO_ID
+            config_path = model_file_download(model_id=LANG_TO_MSP_REPO_ID[language], file_path="config.json", local_dir=f'./pretrained_models/{language}')
         else:
             assert language in DOWNLOAD_CONFIG_URLS
             config_path = cached_path(DOWNLOAD_CONFIG_URLS[language])
     return utils.get_hparams_from_file(config_path)
 
-def load_or_download_model(locale, device, use_hf=True, ckpt_path=None):
+def load_or_download_model(locale, device, use_hf=False, use_ms=True, ckpt_path=None):
     if ckpt_path is None:
         language = locale.split('-')[0].upper()
         if use_hf:
             assert language in LANG_TO_HF_REPO_ID
-            ckpt_path = hf_hub_download(repo_id=LANG_TO_HF_REPO_ID[language], filename="checkpoint.pth")
+            ckpt_path = hf_hub_download(repo_id=LANG_TO_HF_REPO_ID[language], filename="checkpoint.pth", local_dir=f'./pretrained_models/{language}')
+        elif use_ms:
+            assert language in LANG_TO_MSP_REPO_ID
+            ckpt_path = model_file_download(model_id=LANG_TO_MSP_REPO_ID[language], file_path="checkpoint.pth", local_dir=f'./pretrained_models/{language}')
         else:
             assert language in DOWNLOAD_CKPT_URLS
             ckpt_path = cached_path(DOWNLOAD_CKPT_URLS[language])

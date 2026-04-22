@@ -18,6 +18,7 @@ def main(ckpt_path, text, language, output_dir):
     
     for spk_name, spk_id in model.hps.data.spk2id.items():
         save_path = f'{output_dir}/{spk_name}/output.wav'
+        print(f'Generating speech saving to {save_path}')
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         model.tts_to_file(text, spk_id, save_path)
 

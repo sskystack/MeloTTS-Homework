@@ -166,7 +166,10 @@ def run():
     net_g = DDP(net_g, device_ids=[rank], find_unused_parameters=True)
     net_d = DDP(net_d, device_ids=[rank], find_unused_parameters=True)
     
-    pretrain_G, pretrain_D, pretrain_dur = load_pretrain_model()
+    # 把官方预训练模型加载的逻辑替换为使用预训练的中文模型，注释掉原来的下载逻辑
+    # pretrain_G, pretrain_D, pretrain_dur = load_pretrain_model()
+    
+    # 使用预训练的中文模型进行微调
     hps.pretrain_G = hps.pretrain_G or pretrain_G
     hps.pretrain_D = hps.pretrain_D or pretrain_D
     hps.pretrain_dur = hps.pretrain_dur or pretrain_dur

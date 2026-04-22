@@ -9,3 +9,9 @@ build/
 
 *.zip
 *.wav
+pretrained_models
+infer*.py
+参考答案.ipynb
+data/
+logs/
+dicdir/

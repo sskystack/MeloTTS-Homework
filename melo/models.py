@@ -1020,6 +1020,105 @@ class SynthesizerTrn(nn.Module):
         # print('max/min of o:', o.max(), o.min())
         return o, attn, y_mask, (z, z_p, m_p, logs_p)
 
+    def get_original_w_ceil(
+        self,
+        x,
+        x_lengths,
+        sid,
+        tone,
+        language,
+        bert,
+        ja_bert,
+        noise_scale=0.667,
+        length_scale=1,
+        noise_scale_w=0.8,
+        max_len=None,
+        sdp_ratio=0,
+        y=None,
+        g=None,
+    ):
+        # x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths, tone, language, bert)
+        # g = self.gst(y)
+        if g is None:
+            if self.n_speakers > 0:
+                g = self.emb_g(sid).unsqueeze(-1)  # [b, h, 1]
+            else:
+                g = self.ref_enc(y.transpose(1, 2)).unsqueeze(-1)
+        if self.use_vc:
+            g_p = None
+        else:
+            g_p = g
+        x, m_p, logs_p, x_mask = self.enc_p(
+            x, x_lengths, tone, language, bert, ja_bert, g=g_p
+        )
+        logw = self.sdp(x, x_mask, g=g, reverse=True, noise_scale=noise_scale_w) * (
+            sdp_ratio
+        ) + self.dp(x, x_mask, g=g) * (1 - sdp_ratio)
+        w = torch.exp(logw) * x_mask * length_scale
+        
+        w_ceil = torch.ceil(w)
+        
+        return w_ceil
+    
+    def infer_custom_w_ceil(
+        self,
+        x,
+        x_lengths,
+        sid,
+        tone,
+        language,
+        bert,
+        ja_bert,
+        noise_scale=0.667,
+        length_scale=1,
+        noise_scale_w=0.8,
+        max_len=None,
+        sdp_ratio=0,
+        y=None,
+        g=None,
+        w_ceil=[],
+    ):  
+        w_ceil = torch.tensor(w_ceil).to(device=sid.device).unsqueeze(0).unsqueeze(0)  # [1, 1, t]
+        w_ceil = torch.ceil(w_ceil * length_scale)
+        
+        if g is None:
+            if self.n_speakers > 0:
+                g = self.emb_g(sid).unsqueeze(-1)  # [b, h, 1]
+            else:
+                g = self.ref_enc(y.transpose(1, 2)).unsqueeze(-1)
+        if self.use_vc:
+            g_p = None
+        else:
+            g_p = g
+        x, m_p, logs_p, x_mask = self.enc_p(
+            x, x_lengths, tone, language, bert, ja_bert, g=g_p
+        )
+        # logw = self.sdp(x, x_mask, g=g, reverse=True, noise_scale=noise_scale_w) * (
+        #     sdp_ratio
+        # ) + self.dp(x, x_mask, g=g) * (1 - sdp_ratio)
+        # w = torch.exp(logw) * x_mask * length_scale
+        
+        y_lengths = torch.clamp_min(torch.sum(w_ceil, [1, 2]), 1).long()
+        y_mask = torch.unsqueeze(commons.sequence_mask(y_lengths, None), 1).to(
+            x_mask.dtype
+        )
+        attn_mask = torch.unsqueeze(x_mask, 2) * torch.unsqueeze(y_mask, -1)
+        attn = commons.generate_path(w_ceil, attn_mask)
+
+        m_p = torch.matmul(attn.squeeze(1), m_p.transpose(1, 2)).transpose(
+            1, 2
+        )  # [b, t', t], [b, t, d] -> [b, d, t']
+        logs_p = torch.matmul(attn.squeeze(1), logs_p.transpose(1, 2)).transpose(
+            1, 2
+        )  # [b, t', t], [b, t, d] -> [b, d, t']
+
+        z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
+        z = self.flow(z_p, y_mask, g=g, reverse=True)
+        o = self.dec((z * y_mask)[:, :, :max_len], g=g)
+        # print('max/min of o:', o.max(), o.min())
+        return o, attn, y_mask, (z, z_p, m_p, logs_p)
+        
+
     def voice_conversion(self, y, y_lengths, sid_src, sid_tgt, tau=1.0):        
         g_src = sid_src
         g_tgt = sid_tgt
