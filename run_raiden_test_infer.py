@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 import sys
 
 ROOT = Path(__file__).resolve().parent
@@ -6,15 +7,18 @@ sys.path.insert(0, str(ROOT))
 
 from melo.api import TTS
 
-metadata = ROOT / "data/raiden_dataset/metadata_test.list"
+dataset_name = os.environ.get("RAIDEN_DATASET", "raiden_dataset_small")
+checkpoint_step = os.environ.get("RAIDEN_CKPT_STEP", "8000")
+
+metadata = ROOT / f"data/{dataset_name}/metadata_test.list"
 out_dir = ROOT / "outputs/raiden_test_generated_G8000"
 out_dir.mkdir(parents=True, exist_ok=True)
 
 model = TTS(
     language="ZH",
     device="cuda:0",
-    config_path=str(ROOT / "melo/logs/raiden_dataset/config.json"),
-    ckpt_path=str(ROOT / "melo/logs/raiden_dataset/G_8000.pth"),
+    config_path=str(ROOT / f"melo/logs/{dataset_name}/config.json"),
+    ckpt_path=str(ROOT / f"melo/logs/{dataset_name}/G_{checkpoint_step}.pth"),
 )
 
 speaker_id = model.hps.data.spk2id["raiden"]
