@@ -15,3 +15,10 @@ infer*.py
 data/
 logs/
 dicdir/
+*.7z
+*.pth
+~$*
+outputs/
+_inspect_*/
+melo/dicdir.placeholder
+*.pptx
